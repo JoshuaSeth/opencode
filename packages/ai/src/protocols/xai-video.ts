@@ -116,9 +116,9 @@ const decodeStart = MediaProtocol.decodeStarted(ADAPTER, NAME, StartResponse, (v
   snapshot: { id: value.request_id, status: "running" },
 }))
 
-// `progress` is undocumented; forward it only when it is already a 0..1 fraction.
+// `progress` is undocumented but observed live as a 0..100 percentage (recorded cassette: 1 → 10 → 37 → 100).
 const fraction = (progress: number | null | undefined) =>
-  progress !== undefined && progress !== null && progress >= 0 && progress <= 1 ? progress : undefined
+  progress !== undefined && progress !== null && progress >= 0 && progress <= 100 ? progress / 100 : undefined
 
 const decodeVideoStatus = MediaProtocol.decodeJson(ADAPTER, NAME, VideoStatus)
 

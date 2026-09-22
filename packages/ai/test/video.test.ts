@@ -285,7 +285,7 @@ describe("Video / xAI", () => {
                 return json(input, { request_id: "req_1" })
               }
               expect(call.url).toBe("https://xai.test/v1/videos/req_1?trace=1")
-              if (nth === 1) return json(input, { status: "pending", progress: 0.4 })
+              if (nth === 1) return json(input, { status: "pending", progress: 40 })
               return json(input, {
                 status: "done",
                 video: { url: "https://vidgen.x.ai/out.mp4", duration: 10, respect_moderation: true },

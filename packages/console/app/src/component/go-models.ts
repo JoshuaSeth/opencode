@@ -60,8 +60,8 @@ export const goModels = [
     regions: true,
   },
   {
-    id: "space-bunny",
-    name: "Space Bunny",
+    id: "space-bunny-free",
+    name: "Space Bunny Free",
     requests: Infinity,
     allowance: Infinity,
     featured: true,

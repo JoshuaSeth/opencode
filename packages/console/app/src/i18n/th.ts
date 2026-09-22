@@ -3,7 +3,7 @@ import { dict as en } from "./en"
 
 export const dict = {
   ...en,
-  "go.promo.spaceBunny": "Space Bunny โมเดลนิรนามใหม่ เปิดให้ใช้งานในช่วงเวลาจำกัด",
+  "go.promo.spaceBunny": "Space Bunny Free โมเดลนิรนามใหม่ เปิดให้ใช้งานในช่วงเวลาจำกัด",
   "go.graph.bonus": "ใช้งาน {{count}} เท่า",
   "nav.github": "GitHub",
   "nav.docs": "เอกสาร",

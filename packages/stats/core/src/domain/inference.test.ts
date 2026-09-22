@@ -75,9 +75,9 @@ describe("inference stat normalization", () => {
     expect(statProvider("omen-alpha", "gpt-test-model", "test-provider")).toBe("unknown")
     expect(statProvider("OMEN-ALPHA-free:global", "gpt-test-model", "test-provider")).toBe("unknown")
     expect(statProvider("omen-alpha", "", "test-provider")).toBe("unknown")
-    expect(statProvider("space-bunny", "hidden-route-model", "hidden-provider")).toBe("unknown")
+    expect(statProvider("space-bunny-free", "hidden-route-model", "hidden-provider")).toBe("unknown")
 
-    const spaceBunny = { ...aggregate("space-bunny", "hidden-provider"), provider_model: "hidden-route-model" }
+    const spaceBunny = { ...aggregate("space-bunny-free", "hidden-provider"), provider_model: "hidden-route-model" }
     expect(toModelAggregate(spaceBunny)).toMatchObject([
       { model: "space-bunny", provider: "unknown", requests: 1 },
     ])

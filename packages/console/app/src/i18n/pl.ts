@@ -2,7 +2,7 @@ import { dict as en } from "./en"
 
 export const dict = {
   ...en,
-  "go.promo.spaceBunny": "Space Bunny, nowy anonimowy model, jest dostępny przez ograniczony czas",
+  "go.promo.spaceBunny": "Space Bunny Free, nowy anonimowy model, jest dostępny przez ograniczony czas",
   "go.graph.bonus": "{{count}}× większy limit",
   "nav.github": "GitHub",
   "nav.docs": "Dokumentacja",

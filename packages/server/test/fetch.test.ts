@@ -4,7 +4,7 @@ import { createServer } from "node:http"
 import path from "node:path"
 import { Agent } from "@opencode/schema/agent"
 import { Integration } from "@opencode/schema/integration"
-import { ServerInfo } from "@opencode/protocol/groups/server"
+import { PitchAIProcessOwner, ServerInfo } from "@opencode/protocol/groups/server"
 import { Effect, Schedule, Schema } from "effect"
 import { tmpdir } from "../../core/test/fixture/tmpdir"
 import { it } from "../../core/test/lib/effect"
@@ -108,6 +108,22 @@ it.live("serves the HttpApi and enforces Basic auth like the Node server", () =>
     const body = yield* Effect.promise(() => response.json()).pipe(Effect.flatMap(Schema.decodeUnknownEffect(ServerInfo)))
     expect(body.version).toBe("test-version")
     expect(body.paths.tmp).toEndWith("opencode")
+  }),
+)
+
+it.live("requires Basic auth to disclose the running PitchAI owner process", () =>
+  Effect.gen(function* () {
+    const handler = yield* ServerFetch.make({ ...options, password: "secret" })
+    const denied = yield* Effect.promise(() => handler(new Request("http://opencode.local/api/pitchai/owner")))
+    expect(denied.status).toBe(401)
+    const response = yield* Effect.promise(() =>
+      handler(new Request("http://opencode.local/api/pitchai/owner", {
+        headers: { authorization: `Basic ${btoa("opencode:secret")}` },
+      })),
+    )
+    expect(response.status).toBe(200)
+    const owner = yield* Effect.promise(() => response.json()).pipe(Effect.flatMap(Schema.decodeUnknownEffect(PitchAIProcessOwner)))
+    expect(owner.pid).toBe(process.pid)
   }),
 )
 

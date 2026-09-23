@@ -65,6 +65,14 @@ const ModelsOutput = Schema.Struct({
   next: Schema.NullOr(Schema.Int).annotate({ description: "Offset of the next page, or null on the last page." }),
 })
 
+const GoalCompleteInput = Schema.Struct({
+  targetID: Schema.String.check(Schema.isMinLength(1)).annotate({
+    description: "The exact target ID supplied by the long-running goal instruction.",
+  }),
+})
+
+const GoalCompleteOutput = Schema.Struct({ targetID: Schema.String })
+
 export const Plugin = {
   id: "opencode.tools",
   effect: Effect.fn("OpenCodeTools.Plugin")(function* (ctx: Context) {
@@ -130,6 +138,19 @@ export const Plugin = {
                 (error) => new ToolFailure({ message: `Unable to move session to ${input.directory}`, error }),
               ),
             ),
+        })
+        draft.add({
+          name: "goal_complete",
+          description:
+            "Declare that the current long-running goal is fully complete. Call only after finishing and verifying its objective, using the exact targetID from the goal instruction. A final answer without this tool call does not complete the goal.",
+          input: GoalCompleteInput,
+          output: GoalCompleteOutput,
+          options: { namespace: "opencode", codemode: false },
+          execute: (input) =>
+            Effect.succeed({
+              output: { targetID: input.targetID },
+              content: `Declared goal ${input.targetID} complete.`,
+            }),
         })
         draft.add({
           name: "models",

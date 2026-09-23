@@ -31,6 +31,7 @@ import {
   CompactionConflictError,
   ForkEmptyError,
   ForkConflictError,
+  CreateConflictError,
   InboxConflictError,
   MessageDecodeError,
   MessageNotFoundError,
@@ -110,6 +111,7 @@ export {
   NotFoundError,
   PromptConflictError,
   ForkConflictError,
+  CreateConflictError,
   SkillNotFoundError,
   SyntheticConflictError,
 }
@@ -122,7 +124,7 @@ export interface Interface {
   readonly list: (input?: ListInput) => Effect.Effect<{
     readonly data: SessionSchema.Info[]
   }>
-  readonly create: (input: CreateInput) => Effect.Effect<SessionSchema.Info, NotFoundError>
+  readonly create: (input: CreateInput) => Effect.Effect<SessionSchema.Info, NotFoundError | CreateConflictError>
   readonly fork: (
     input: ForkInput,
   ) => Effect.Effect<SessionSchema.Info, NotFoundError | MessageNotFoundError | ForkEmptyError | ForkConflictError>
@@ -249,13 +251,17 @@ const layer = Layer.effect(
     const result = Service.of({
       create: Effect.fn("Session.create")(function* (input) {
         const sessionID = input.id ?? SessionSchema.ID.create()
-        const recorded = yield* store.get(sessionID)
-        if (recorded) return recorded
         const parent = input.parentID ? yield* store.get(input.parentID) : undefined
         if (input.parentID && parent === undefined) return yield* new NotFoundError({ sessionID: input.parentID })
         const location = input.location ?? parent?.location
         if (location === undefined)
           return yield* Effect.die(new Error("Session.create requires either location or an existing parentID"))
+        const matches = (recorded: SessionSchema.Info) =>
+          recorded.parentID === input.parentID &&
+          recorded.location.directory === location.directory &&
+          recorded.location.workspaceID === location.workspaceID
+        const recorded = yield* store.get(sessionID)
+        if (recorded) return matches(recorded) ? recorded : yield* new CreateConflictError({ sessionID })
         const project = yield* projects.resolve(location.directory)
         if (parent && parent.projectID !== project.id) return yield* new NotFoundError({ sessionID: parent.id })
         const projected = yield* bus
@@ -291,12 +297,16 @@ const layer = Layer.effect(
               if (!(defect instanceof SessionProjector.SessionAlreadyProjected)) {
                 return Effect.die(defect)
               }
-              // Concurrent creation lost the projection race. The existing Session identity wins.
+              // Concurrent exact retries reuse the projected session; changed requests conflict.
               return store
                 .get(sessionID)
                 .pipe(
                   Effect.flatMap((session) =>
-                    session ? Effect.succeed({ type: "existing", session } as const) : Effect.die(defect),
+                    session
+                      ? matches(session)
+                        ? Effect.succeed({ type: "existing", session } as const)
+                        : Effect.fail(new CreateConflictError({ sessionID }))
+                      : Effect.die(defect),
                   ),
                 )
             }),

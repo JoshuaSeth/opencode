@@ -138,7 +138,12 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
                 permissions: ctx.payload.permissions,
                 ...placement,
               })
-              .pipe(Effect.catchTag("Session.NotFoundError", missingSession)),
+              .pipe(
+                Effect.catchTag("Session.NotFoundError", missingSession),
+                Effect.catchTag("Session.CreateConflictError", (error) =>
+                  new ConflictError({ resource: error.sessionID, message: `Create session ID conflicts with an existing session: ${error.sessionID}` }),
+                ),
+              ),
           }
         }),
       )

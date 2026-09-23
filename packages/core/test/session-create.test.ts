@@ -435,6 +435,23 @@ describe("Session.create", () => {
     }),
   )
 
+  it.effect("retries a child ID only for its original parent and worktree", () =>
+    Effect.gen(function* () {
+      const session = yield* Session.Service
+      const parent = yield* session.create({ location })
+      const worktree = Location.Ref.make({ directory: AbsolutePath.make("/project/worker") })
+      const other = Location.Ref.make({ directory: AbsolutePath.make("/project/other") })
+      const created = yield* session.create({ parentID: parent.id, location: worktree, title: "worker" })
+
+      expect((yield* session.create({ id: created.id, parentID: parent.id, location: worktree, title: "worker" })).id)
+        .toBe(created.id)
+      expect(yield* Effect.flip(session.create({ id: created.id, parentID: parent.id, location: other })))
+        .toEqual(new Session.CreateConflictError({ sessionID: created.id }))
+      expect(yield* Effect.flip(session.create({ id: created.id, location: worktree })))
+        .toEqual(new Session.CreateConflictError({ sessionID: created.id }))
+    }),
+  )
+
   it.effect("rejects child creation when the parent does not exist", () =>
     Effect.gen(function* () {
       const session = yield* Session.Service
@@ -905,24 +922,20 @@ describe("Session.create", () => {
     }),
   )
 
-  it.effect("returns the existing Session when one ID is reused with different create arguments", () =>
+  it.effect("rejects an existing Session ID with a different location or parent", () =>
     Effect.gen(function* () {
       const session = yield* Session.Service
-      const created = yield* session.create({ id, location })
+      yield* session.create({ id, location })
+      const otherParent = yield* session.create({ location })
       const changed = [
         { id, location: Location.Ref.make({ directory: AbsolutePath.make("/other") }) },
-        { id, location, agent: Agent.ID.make("build") },
-        {
-          id,
-          location,
-          model: Model.Ref.make({ id: Model.ID.make("sonnet"), providerID: Provider.ID.anthropic }),
-        },
+        { id, parentID: otherParent.id, location },
       ]
 
       for (const input of changed) {
-        expect(yield* session.create(input)).toEqual(created)
+        expect(yield* Effect.flip(session.create(input))).toEqual(new Session.CreateConflictError({ sessionID: id }))
       }
-      expect((yield* session.list()).data).toHaveLength(1)
+      expect((yield* session.list()).data).toHaveLength(2)
     }),
   )
 

@@ -28,6 +28,10 @@ export class ForkConflictError extends Schema.TaggedError<ForkConflictError>()("
   sessionID: SessionSchema.ID,
 }) {}
 
+export class CreateConflictError extends Schema.TaggedError<CreateConflictError>()("Session.CreateConflictError", {
+  sessionID: SessionSchema.ID,
+}) {}
+
 export class MessageDecodeError extends Schema.TaggedError<MessageDecodeError>()("Session.MessageDecodeError", {
   sessionID: SessionSchema.ID,
   messageID: SessionMessage.ID,

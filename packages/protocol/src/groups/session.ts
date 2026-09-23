@@ -229,7 +229,7 @@ export const makeSessionGroup = <
           permissions: Permission.Ruleset.pipe(Schema.optional),
         }),
         success: Schema.Struct({ data: PublicSessionInfo }),
-        error: SessionNotFoundError,
+        error: [SessionNotFoundError, ConflictError],
       }).annotateMerge(
         OpenApi.annotations({
           identifier: "session.create",

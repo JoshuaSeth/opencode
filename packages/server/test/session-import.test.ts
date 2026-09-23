@@ -46,6 +46,9 @@ it.live("creates an empty child through the public API with a stable session ID"
     expect(child.data).toMatchObject({ id, parentID: parent.data.id, title: "Worker" })
     expect(retried.data.id).toBe(id)
     expect(children.data.map((item) => item.id)).toEqual([id])
+    const other = Schema.decodeUnknownSync(SessionResponse)(yield* request("/api/session", { title: "Other" }))
+    expect(yield* request("/api/session", { id, parentID: other.data.id }, 409))
+      .toMatchObject({ _tag: "ConflictError", resource: id })
     expect(yield* request("/api/session", { parentID: Session.ID.create() }, 404))
       .toMatchObject({ _tag: "SessionNotFoundError" })
   }).pipe(Effect.scoped),

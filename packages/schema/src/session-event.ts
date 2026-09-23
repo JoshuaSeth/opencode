@@ -188,6 +188,7 @@ export const Forked = Event.durable({
     parentID: SessionID,
     boundary: SessionFork.Boundary,
     location: Location.Ref.pipe(optional),
+    metadata: SessionMetadata.pipe(optional),
     subpath: RelativePath.pipe(optional),
     instructions: Instruction.Values.pipe(optional),
     instructionEntries: InstructionEntry.Snapshot.pipe(optional),

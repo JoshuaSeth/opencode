@@ -159,7 +159,7 @@ const projectFork = Effect.fn("SessionProjector.projectFork")(function* (
       title: forkTitle(parent.title ?? undefined),
       agent: parent.agent,
       model: parent.model,
-      metadata: parent.metadata,
+      metadata: event.data.metadata ?? parent.metadata,
       permission: parent.permission,
       version: parent.version,
       cost: 0,

@@ -439,7 +439,7 @@ const EndpointSessionFork = (raw: RawClient["server.session"]) => (input: Sessio
   preserveEffect<SessionForkOutput>()(
     raw["session.fork"]({
       params: { sessionID: input["sessionID"] },
-      payload: { id: input["id"], before: input["before"], location: input["location"] },
+      payload: { id: input["id"], before: input["before"], location: input["location"], metadata: input["metadata"] },
     }).pipe(
       Effect.mapError(mapClientError),
       Effect.map((value) => value.data),

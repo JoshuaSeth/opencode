@@ -241,6 +241,7 @@ export type SessionForkInput = {
   readonly id?: Session.ID | undefined
   readonly before?: SessionMessage.ID | undefined
   readonly location?: Location.PublicRef | undefined
+  readonly metadata?: Session.Metadata | undefined
 }
 export type SessionForkOutput = Session.Info
 export type SessionForkOperation<E = never> = (input: SessionForkInput) => Effect.Effect<SessionForkOutput, E>
@@ -599,6 +600,7 @@ export type SessionLogOutput =
                   readonly workspaceID?: (string & Brand.Brand<"Workspace.ID">) | undefined
                 }
               | undefined
+            readonly metadata?: Session.Metadata | undefined
             readonly subpath?: RelativePath | undefined
             readonly instructions?:
               | { readonly [x: string & Brand.Brand<"Instruction.Key">]: string & Brand.Brand<"Instruction.Hash"> }

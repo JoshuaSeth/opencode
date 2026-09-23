@@ -1813,6 +1813,7 @@ export type SessionForked = {
     parentID: string
     boundary: SessionForkBoundary
     location?: LocationRef
+    metadata?: SessionMetadata
     subpath?: string
     instructions?: { [x: string]: string }
     instructionEntries?: InstructionEntrySnapshot
@@ -3961,17 +3962,26 @@ export type SessionForkInput = {
     readonly id?: string | undefined
     readonly before?: string | undefined
     readonly location?: { readonly directory: string } | undefined
+    readonly metadata?: { readonly [x: string]: JsonValue } | undefined
   }["id"]
   readonly before?: {
     readonly id?: string | undefined
     readonly before?: string | undefined
     readonly location?: { readonly directory: string } | undefined
+    readonly metadata?: { readonly [x: string]: JsonValue } | undefined
   }["before"]
   readonly location?: {
     readonly id?: string | undefined
     readonly before?: string | undefined
     readonly location?: { readonly directory: string } | undefined
+    readonly metadata?: { readonly [x: string]: JsonValue } | undefined
   }["location"]
+  readonly metadata?: {
+    readonly id?: string | undefined
+    readonly before?: string | undefined
+    readonly location?: { readonly directory: string } | undefined
+    readonly metadata?: { readonly [x: string]: JsonValue } | undefined
+  }["metadata"]
 }
 
 export type SessionForkOutput = { data: SessionInfo }["data"]

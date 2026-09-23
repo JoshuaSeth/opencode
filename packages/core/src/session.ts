@@ -99,6 +99,7 @@ type ForkInput = {
   sessionID: SessionSchema.ID
   before?: SessionMessage.ID
   location?: Location.Ref
+  metadata?: SessionSchema.Metadata
 }
 
 export {
@@ -325,7 +326,8 @@ const layer = Layer.effect(
             : existing.fork?.boundary.type === "through"
           if (existing.fork?.sessionID !== parent.id || !sameBoundary ||
               existing.location.directory !== wantedLocation.directory ||
-              existing.location.workspaceID !== wantedLocation.workspaceID) {
+              existing.location.workspaceID !== wantedLocation.workspaceID ||
+              JSON.stringify(existing.metadata) !== JSON.stringify(input.metadata ?? parent.metadata)) {
             return yield* new ForkConflictError({ sessionID: existing.id })
           }
           return existing
@@ -368,6 +370,7 @@ const layer = Layer.effect(
           parentID: parent.id,
           boundary: { type: input.before ? "before" : "through", messageID: boundary.id },
           location: input.location,
+          metadata: input.metadata,
           subpath: project && input.location
             ? RelativePath.make(path.relative(project.directory, input.location.directory).replaceAll("\\", "/"))
             : undefined,

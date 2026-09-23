@@ -314,6 +314,7 @@ export const makeSessionGroup = <
           id: Session.ID.pipe(Schema.optional),
           before: SessionMessage.ID.pipe(Schema.optional),
           location: Location.PublicRef.pipe(Schema.optional),
+          metadata: Session.Metadata.pipe(Schema.optional),
         }),
         success: Schema.Struct({ data: PublicSessionInfo }),
         error: [SessionNotFoundError, MessageNotFoundError, InvalidRequestError, ConflictError],

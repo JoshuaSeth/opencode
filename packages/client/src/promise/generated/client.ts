@@ -641,7 +641,12 @@ export function make(options: ClientOptions) {
           {
             method: "POST",
             path: `/api/session/${encodeURIComponent(input.sessionID)}/fork`,
-            body: { id: input["id"], before: input["before"], location: input["location"] },
+            body: {
+              id: input["id"],
+              before: input["before"],
+              location: input["location"],
+              metadata: input["metadata"],
+            },
             successStatus: 200,
             declaredStatuses: [400, 401, 404, 409],
             empty: false,

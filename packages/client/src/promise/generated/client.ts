@@ -1,5 +1,6 @@
 import type {
   ServerInfoOutput,
+  ServerPitchaiOwnerOutput,
   LocationGetInput,
   LocationGetOutput,
   LocationReloadOutput,
@@ -412,6 +413,19 @@ export function make(options: ClientOptions) {
           { method: "GET", path: `/api/info`, successStatus: 200, declaredStatuses: [400, 401], empty: false },
           requestOptions,
         ),
+      pitchai: {
+        owner: (requestOptions?: RequestOptions) =>
+          request<ServerPitchaiOwnerOutput>(
+            {
+              method: "GET",
+              path: `/api/pitchai/owner`,
+              successStatus: 200,
+              declaredStatuses: [400, 401],
+              empty: false,
+            },
+            requestOptions,
+          ),
+      },
     },
     location: {
       get: (input?: LocationGetInput, requestOptions?: RequestOptions) =>

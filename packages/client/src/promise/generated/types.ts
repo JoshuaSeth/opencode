@@ -2,6 +2,17 @@ export type JsonValue = null | boolean | number | string | Array<JsonValue> | { 
 
 export type ServerInfo = { version: string; pid: number; urls: Array<string>; paths: { tmp: string } }
 
+export type PitchAIProcessOwner = {
+  instanceID: string | null
+  generationID: string | null
+  bundleSHA256: string | null
+  tenantID: string | null
+  userID: string | null
+  repoRoot: string | null
+  databasePath: string | null
+  pid: number
+}
+
 export type LocationPublicInfo = { directory: string; project: { id: string; directory: string; canonical: string } }
 
 export type LocationPublicRef = { directory: string }
@@ -2685,6 +2696,8 @@ export const isWorktreeError = (value: unknown): value is WorktreeError =>
   typeof value === "object" && value !== null && "name" in value && value["name"] === "WorktreeError"
 
 export type ServerInfoOutput = ServerInfo
+
+export type ServerPitchaiOwnerOutput = PitchAIProcessOwner
 
 export type LocationGetInput = {
   readonly location?: { readonly location?: { readonly directory?: string | undefined } | undefined }["location"]

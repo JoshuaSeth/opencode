@@ -48,6 +48,47 @@
         "summary": "Get server info"
       }
     },
+    "/api/pitchai/owner": {
+      "get": {
+        "tags": ["server"],
+        "operationId": "server.pitchai.owner",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "PitchAIProcessOwner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PitchAIProcessOwner"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "InvalidRequestError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestErrorEncoded"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorEncoded"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get the running PitchAI process identity"
+      }
+    },
     "/api/location": {
       "get": {
         "tags": ["location"],
@@ -886,6 +927,26 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "SessionNotFoundError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionNotFoundErrorEncoded"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "ConflictError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictErrorEncoded"
+                }
+              }
+            }
           }
         },
         "description": "Create a session at the requested location.",
@@ -897,6 +958,17 @@
                 "type": "object",
                 "properties": {
                   "id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^ses"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "parentID": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -1655,9 +1727,19 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "ConflictError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictErrorEncoded"
+                }
+              }
+            }
           }
         },
-        "description": "Create a child session by copying projected history before a message. Omit before to copy the full history.",
+        "description": "Fork projected history into a new session, optionally in another worktree of the same project.",
         "summary": "Fork session",
         "requestBody": {
           "content": {
@@ -1665,11 +1747,32 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^ses"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "before": {
                     "anyOf": [
                       {
                         "type": "string",
                         "pattern": "^msg_"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/Location.PublicRef"
                       },
                       {
                         "type": "null"
@@ -16103,6 +16206,96 @@
           }
         },
         "required": ["size"],
+        "additionalProperties": false
+      },
+      "PitchAIProcessOwner": {
+        "type": "object",
+        "properties": {
+          "instanceID": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generationID": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bundleSHA256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tenantID": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "userID": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repoRoot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "databasePath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pid": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "instanceID",
+          "generationID",
+          "bundleSHA256",
+          "tenantID",
+          "userID",
+          "repoRoot",
+          "databasePath",
+          "pid"
+        ],
         "additionalProperties": false
       },
       "Plugin.Features": {

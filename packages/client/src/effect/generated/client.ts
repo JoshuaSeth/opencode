@@ -6,6 +6,7 @@ import { HttpApiClient } from "effect/unstable/httpapi"
 import { ClientApi } from "../../contract"
 import type {
   ServerInfoOutput,
+  ServerPitchaiOwnerOutput,
   LocationGetInput,
   LocationGetOutput,
   LocationReloadOutput,
@@ -281,7 +282,13 @@ const preserveStream =
 const EndpointServerInfo = (raw: RawClient["server.server"]) => () =>
   preserveEffect<ServerInfoOutput>()(raw["server.info"]({}).pipe(Effect.mapError(mapClientError)))
 
-const adaptGroupServer = (raw: RawClient["server.server"]) => ({ info: EndpointServerInfo(raw) })
+const EndpointServerPitchaiOwner = (raw: RawClient["server.server"]) => () =>
+  preserveEffect<ServerPitchaiOwnerOutput>()(raw["server.pitchaiOwner"]({}).pipe(Effect.mapError(mapClientError)))
+
+const adaptGroupServer = (raw: RawClient["server.server"]) => ({
+  info: EndpointServerInfo(raw),
+  pitchai: { owner: EndpointServerPitchaiOwner(raw) },
+})
 
 const EndpointLocationGet = (raw: RawClient["server.location"]) => (input?: LocationGetInput) =>
   preserveEffect<LocationGetOutput>()(

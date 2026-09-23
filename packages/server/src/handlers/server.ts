@@ -14,5 +14,16 @@ export const ServerHandler = HttpApiBuilder.group(Api, "server.server", (handler
         paths: info.paths,
       }
     }),
+  ).handle("server.pitchaiOwner", () =>
+    Effect.succeed({
+      instanceID: process.env.PITCHAI_OPENCODE_INSTANCE_ID ?? null,
+      generationID: process.env.PITCHAI_OPENCODE_GENERATION_ID ?? null,
+      bundleSHA256: process.env.PITCHAI_OPENCODE_BUNDLE_SHA256 ?? null,
+      tenantID: process.env.PITCHAI_OPENCODE_TENANT_ID ?? null,
+      userID: process.env.PITCHAI_OPENCODE_USER_ID ?? null,
+      repoRoot: process.env.PITCHAI_OPENCODE_REPO_ROOT ?? null,
+      databasePath: process.env.OPENCODE_DB ?? null,
+      pid: process.pid ?? 0,
+    }),
   ),
 )

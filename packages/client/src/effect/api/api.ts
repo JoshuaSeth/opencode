@@ -47,8 +47,21 @@ export type ServerInfoOutput = {
 }
 export type ServerInfoOperation<E = never> = () => Effect.Effect<ServerInfoOutput, E>
 
+export type ServerPitchaiOwnerOutput = {
+  readonly instanceID: string | null
+  readonly generationID: string | null
+  readonly bundleSHA256: string | null
+  readonly tenantID: string | null
+  readonly userID: string | null
+  readonly repoRoot: string | null
+  readonly databasePath: string | null
+  readonly pid: number
+}
+export type ServerPitchaiOwnerOperation<E = never> = () => Effect.Effect<ServerPitchaiOwnerOutput, E>
+
 export interface ServerApi<E = never> {
   readonly info: ServerInfoOperation<E>
+  readonly pitchai: { readonly owner: ServerPitchaiOwnerOperation<E> }
 }
 
 export type LocationGetInput = { readonly location?: { readonly directory?: string | undefined } | undefined }

@@ -1,6 +1,6 @@
 export * as SessionInbox from "./inbox.js"
 
-import { and, asc, eq, or } from "drizzle-orm"
+import { and, asc, desc, eq, gt, or } from "drizzle-orm"
 import { Context, DateTime, Effect, Layer, Schema } from "effect"
 import { makeGlobalNode } from "@opencode/util/effect/app-node"
 import {
@@ -503,18 +503,7 @@ export const promote = Effect.fn("SessionInbox.promote")(function* (
   return yield* serialized(
     sessionID,
     Effect.gen(function* () {
-      // A strict correction belongs to the running turn. If the turn has already
-      // ended, retire it before a batch of ordinary steers can start new work.
-      if (!continuing) {
-        for (const item of yield* pendingSteers(db, sessionID)) {
-          const metadata = item.type === "user" ? decodeUser(item.payload).metadata : undefined
-          const pitchai = metadata?.pitchai
-          if (!pitchai || typeof pitchai !== "object" || !("strictTurn" in pitchai) || pitchai.strictTurn !== true)
-            continue
-          yield* bus.publish(SessionEvent.InboxCancelled, { sessionID, inboxID: SessionMessage.ID.make(item.id) })
-        }
-      }
-      const steers = yield* pendingSteers(db, sessionID)
+      const steers = yield* eligibleSteers(db, bus, sessionID, continuing, yield* pendingSteers(db, sessionID))
       if (steers.length > 0 || scope === "steer") {
         const control = steers.findIndex((row) => row.type === "compaction" || row.type === "move")
         if (control === 0) return undefined
@@ -532,7 +521,7 @@ export const promote = Effect.fn("SessionInbox.promote")(function* (
       if (!queued) return 0
       if (queued.type === "compaction" || queued.type === "move") return undefined
       const promoted = yield* publish(db, bus, sessionID, [queued])
-      const arrivedSteers = yield* pendingSteers(db, sessionID)
+      const arrivedSteers = yield* eligibleSteers(db, bus, sessionID, continuing, yield* pendingSteers(db, sessionID))
       const control = arrivedSteers.findIndex((row) => row.type === "compaction" || row.type === "move")
       return (
         promoted +
@@ -540,6 +529,60 @@ export const promote = Effect.fn("SessionInbox.promote")(function* (
       )
     }),
   )
+})
+
+const eligibleSteers = Effect.fn("SessionInbox.eligibleSteers")(function* (
+  db: DatabaseService,
+  bus: Bus.Interface,
+  sessionID: SessionSchema.ID,
+  continuing: boolean,
+  rows: ReadonlyArray<typeof SessionInboxTable.$inferSelect>,
+) {
+  const strict = rows.filter((row) => {
+    const metadata = row.type === "user" ? decodeUser(row.payload).metadata : undefined
+    const pitchai = metadata?.pitchai
+    return pitchai && typeof pitchai === "object" && "strictTurn" in pitchai && pitchai.strictTurn === true
+  })
+  if (strict.length === 0) return rows
+  // The first user after the latest idle is the selected original busy period.
+  // A late correction is cancelled even if another turn has already started.
+  const idle = yield* db
+    .select({ seq: SessionMessageTable.seq })
+    .from(SessionMessageTable)
+    .where(and(eq(SessionMessageTable.session_id, sessionID), eq(SessionMessageTable.type, "idle")))
+    .orderBy(desc(SessionMessageTable.seq))
+    .limit(1)
+    .get()
+    .pipe(Effect.orDie)
+  const first = yield* db
+    .select({ id: SessionMessageTable.id })
+    .from(SessionMessageTable)
+    .where(
+      and(
+        eq(SessionMessageTable.session_id, sessionID),
+        eq(SessionMessageTable.type, "user"),
+        idle ? gt(SessionMessageTable.seq, idle.seq) : undefined,
+      ),
+    )
+    .orderBy(asc(SessionMessageTable.seq))
+    .limit(1)
+    .get()
+    .pipe(Effect.orDie)
+  const eligible: Array<typeof SessionInboxTable.$inferSelect> = []
+  for (const row of rows) {
+    if (!strict.includes(row)) {
+      eligible.push(row)
+      continue
+    }
+    const metadata = decodeUser(row.payload).metadata
+    const pitchai = metadata?.pitchai
+    if (continuing && pitchai && typeof pitchai === "object" && "originalInputId" in pitchai && pitchai.originalInputId === first?.id) {
+      eligible.push(row)
+      continue
+    }
+    yield* bus.publish(SessionEvent.InboxCancelled, { sessionID, inboxID: SessionMessage.ID.make(row.id) })
+  }
+  return eligible
 })
 
 const pendingSteers = (db: DatabaseService, sessionID: SessionSchema.ID) =>

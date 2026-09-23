@@ -498,10 +498,22 @@ export const promote = Effect.fn("SessionInbox.promote")(function* (
   bus: Bus.Interface,
   sessionID: SessionSchema.ID,
   scope: Promotable,
+  continuing = scope === "steer",
 ) {
   return yield* serialized(
     sessionID,
     Effect.gen(function* () {
+      // A strict correction belongs to the running turn. If the turn has already
+      // ended, retire it before a batch of ordinary steers can start new work.
+      if (!continuing) {
+        for (const item of yield* pendingSteers(db, sessionID)) {
+          const metadata = item.type === "user" ? decodeUser(item.payload).metadata : undefined
+          const pitchai = metadata?.pitchai
+          if (!pitchai || typeof pitchai !== "object" || !("strictTurn" in pitchai) || pitchai.strictTurn !== true)
+            continue
+          yield* bus.publish(SessionEvent.InboxCancelled, { sessionID, inboxID: SessionMessage.ID.make(item.id) })
+        }
+      }
       const steers = yield* pendingSteers(db, sessionID)
       if (steers.length > 0 || scope === "steer") {
         const control = steers.findIndex((row) => row.type === "compaction" || row.type === "move")

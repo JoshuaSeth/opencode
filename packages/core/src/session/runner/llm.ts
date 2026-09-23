@@ -167,9 +167,11 @@ const layer = Layer.effect(
                     bus,
                     sessionID,
                     entering && !continuing ? promotable : "steer",
+                    continuing,
                   )
                   // A control admitted during context preparation owns this boundary.
                   if (promoted === undefined) return undefined
+                  if (promoted === 0 && !continuing && !force) return DrainResult.Complete()
                   if (promoted > 0 && !selected.session.parentID && SessionTitle.isUntitled(selected.session))
                     yield* FiberMap.run(titles, sessionID, title.generate(sessionID), {
                       onlyIfMissing: true,

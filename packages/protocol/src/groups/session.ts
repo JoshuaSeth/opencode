@@ -220,6 +220,7 @@ export const makeSessionGroup = <
       HttpApiEndpoint.post("session.create", "/api/session", {
         payload: Schema.Struct({
           id: Session.ID.pipe(Schema.optional),
+          parentID: Session.ID.pipe(Schema.optional),
           title: Schema.String.pipe(Schema.optional),
           agent: Agent.ID.pipe(Schema.optional),
           model: Model.Ref.pipe(Schema.optional),
@@ -228,6 +229,7 @@ export const makeSessionGroup = <
           permissions: Permission.Ruleset.pipe(Schema.optional),
         }),
         success: Schema.Struct({ data: PublicSessionInfo }),
+        error: SessionNotFoundError,
       }).annotateMerge(
         OpenApi.annotations({
           identifier: "session.create",
@@ -308,9 +310,13 @@ export const makeSessionGroup = <
     .add(
       HttpApiEndpoint.post("session.fork", "/api/session/:sessionID/fork", {
         params: { sessionID: Session.ID },
-        payload: Schema.Struct({ before: SessionMessage.ID.pipe(Schema.optional) }),
+        payload: Schema.Struct({
+          id: Session.ID.pipe(Schema.optional),
+          before: SessionMessage.ID.pipe(Schema.optional),
+          location: Location.PublicRef.pipe(Schema.optional),
+        }),
         success: Schema.Struct({ data: PublicSessionInfo }),
-        error: [SessionNotFoundError, MessageNotFoundError, InvalidRequestError],
+        error: [SessionNotFoundError, MessageNotFoundError, InvalidRequestError, ConflictError],
       })
         .middleware(sessionLocationMiddleware)
         .annotateMerge(
@@ -318,7 +324,7 @@ export const makeSessionGroup = <
             identifier: "session.fork",
             summary: "Fork session",
             description:
-              "Create a child session by copying projected history before a message. Omit before to copy the full history.",
+              "Fork projected history into a new session, optionally in another worktree of the same project.",
           }),
         ),
     )

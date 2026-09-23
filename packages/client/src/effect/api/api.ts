@@ -189,6 +189,7 @@ export type SessionStatsOperation<E = never> = (input?: SessionStatsInput) => Ef
 
 export type SessionCreateInput = {
   readonly id?: Session.ID | undefined
+  readonly parentID?: Session.ID | undefined
   readonly title?: string | undefined
   readonly agent?: Agent.ID | undefined
   readonly model?: Model.Ref | undefined
@@ -222,7 +223,12 @@ export type SessionRemoveInput = { readonly sessionID: Session.ID }
 export type SessionRemoveOutput = void
 export type SessionRemoveOperation<E = never> = (input: SessionRemoveInput) => Effect.Effect<SessionRemoveOutput, E>
 
-export type SessionForkInput = { readonly sessionID: Session.ID; readonly before?: SessionMessage.ID | undefined }
+export type SessionForkInput = {
+  readonly sessionID: Session.ID
+  readonly id?: Session.ID | undefined
+  readonly before?: SessionMessage.ID | undefined
+  readonly location?: Location.PublicRef | undefined
+}
 export type SessionForkOutput = Session.Info
 export type SessionForkOperation<E = never> = (input: SessionForkInput) => Effect.Effect<SessionForkOutput, E>
 
@@ -574,6 +580,13 @@ export type SessionLogOutput =
             readonly sessionID: Session.ID
             readonly parentID: Session.ID
             readonly boundary: Session.ForkBoundary
+            readonly location?:
+              | {
+                  readonly directory: AbsolutePath
+                  readonly workspaceID?: (string & Brand.Brand<"Workspace.ID">) | undefined
+                }
+              | undefined
+            readonly subpath?: RelativePath | undefined
             readonly instructions?:
               | { readonly [x: string & Brand.Brand<"Instruction.Key">]: string & Brand.Brand<"Instruction.Hash"> }
               | undefined

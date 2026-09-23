@@ -30,6 +30,7 @@ import {
   BusyError,
   CompactionConflictError,
   ForkEmptyError,
+  ForkConflictError,
   InboxConflictError,
   MessageDecodeError,
   MessageNotFoundError,
@@ -88,13 +89,15 @@ type CreateBaseInput = {
   permissions?: Permission.Ruleset
 }
 type CreateInput = CreateBaseInput &
-  ({ location: Location.Ref; parentID?: never } | { parentID: SessionSchema.ID; location?: never })
+  ({ location: Location.Ref; parentID?: SessionSchema.ID } | { parentID: SessionSchema.ID; location?: Location.Ref })
 
 type CompactInput = Parameters<Session.Handle["compact"]>[0] & { sessionID: SessionSchema.ID }
 
 type ForkInput = {
+  id?: SessionSchema.ID
   sessionID: SessionSchema.ID
   before?: SessionMessage.ID
+  location?: Location.Ref
 }
 
 export {
@@ -106,6 +109,7 @@ export {
   MessageNotFoundError,
   NotFoundError,
   PromptConflictError,
+  ForkConflictError,
   SkillNotFoundError,
   SyntheticConflictError,
 }
@@ -121,7 +125,7 @@ export interface Interface {
   readonly create: (input: CreateInput) => Effect.Effect<SessionSchema.Info, NotFoundError>
   readonly fork: (
     input: ForkInput,
-  ) => Effect.Effect<SessionSchema.Info, NotFoundError | MessageNotFoundError | ForkEmptyError>
+  ) => Effect.Effect<SessionSchema.Info, NotFoundError | MessageNotFoundError | ForkEmptyError | ForkConflictError>
   readonly get: (sessionID: SessionSchema.ID) => Effect.Effect<SessionSchema.Info, NotFoundError>
   readonly environment: (input: {
     readonly sessionID: SessionSchema.ID
@@ -249,10 +253,11 @@ const layer = Layer.effect(
         if (recorded) return recorded
         const parent = input.parentID ? yield* store.get(input.parentID) : undefined
         if (input.parentID && parent === undefined) return yield* new NotFoundError({ sessionID: input.parentID })
-        const location = parent?.location ?? input.location
+        const location = input.location ?? parent?.location
         if (location === undefined)
           return yield* Effect.die(new Error("Session.create requires either location or an existing parentID"))
         const project = yield* projects.resolve(location.directory)
+        if (parent && parent.projectID !== project.id) return yield* new NotFoundError({ sessionID: parent.id })
         const projected = yield* bus
           .publish(
             SessionEvent.Created,
@@ -302,6 +307,21 @@ const layer = Layer.effect(
       }),
       fork: Effect.fn("Session.fork")(function* (input) {
         const parent = yield* result.get(input.sessionID)
+        const existing = input.id ? yield* store.get(input.id) : undefined
+        if (existing) {
+          const wantedLocation = input.location ?? parent.location
+          const sameBoundary = input.before
+            ? existing.fork?.boundary.type === "before" && existing.fork.boundary.messageID === input.before
+            : existing.fork?.boundary.type === "through"
+          if (existing.fork?.sessionID !== parent.id || !sameBoundary ||
+              existing.location.directory !== wantedLocation.directory ||
+              existing.location.workspaceID !== wantedLocation.workspaceID) {
+            return yield* new ForkConflictError({ sessionID: existing.id })
+          }
+          return existing
+        }
+        const project = input.location ? yield* projects.resolve(input.location.directory) : undefined
+        if (project && project.id !== parent.projectID) return yield* new NotFoundError({ sessionID: parent.id })
         const boundary = yield* db
           .select({ id: SessionMessageTable.id })
           .from(SessionMessageTable)
@@ -321,7 +341,7 @@ const layer = Layer.effect(
             messageID: input.before,
           })
         if (!boundary) return yield* new ForkEmptyError({ sessionID: input.sessionID })
-        const sessionID = SessionSchema.ID.create()
+        const sessionID = input.id ?? SessionSchema.ID.create()
         const inherited = yield* db
           .transaction(() =>
             Effect.all({
@@ -337,6 +357,10 @@ const layer = Layer.effect(
           sessionID,
           parentID: parent.id,
           boundary: { type: input.before ? "before" : "through", messageID: boundary.id },
+          location: input.location,
+          subpath: project && input.location
+            ? RelativePath.make(path.relative(project.directory, input.location.directory).replaceAll("\\", "/"))
+            : undefined,
           ...inherited,
         })
         return yield* result.get(sessionID).pipe(Effect.orDie)

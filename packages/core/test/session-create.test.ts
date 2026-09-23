@@ -93,7 +93,6 @@ const logEvents = (session: Session.Interface, sessionID: Session.ID, follow?: b
 const assertCreateInputTypes = (session: Session.Interface) => {
   // @ts-expect-error location or parentID is required.
   session.create({})
-  // @ts-expect-error child sessions inherit their parent's location.
   session.create({ parentID: Session.ID.create(), location })
 }
 void assertCreateInputTypes
@@ -424,6 +423,18 @@ describe("Session.create", () => {
     }),
   )
 
+  it.effect("places a child in its explicit worktree while retaining its parent", () =>
+    Effect.gen(function* () {
+      const session = yield* Session.Service
+      const parent = yield* session.create({ location })
+      const childLocation = Location.Ref.make({ directory: AbsolutePath.make("/project/worker") })
+      const child = yield* session.create({ parentID: parent.id, location: childLocation, title: "worker" })
+
+      expect(child).toMatchObject({ parentID: parent.id, location: childLocation })
+      expect((yield* session.list({ parentID: parent.id })).data.map((item) => item.id)).toContain(child.id)
+    }),
+  )
+
   it.effect("rejects child creation when the parent does not exist", () =>
     Effect.gen(function* () {
       const session = yield* Session.Service
@@ -584,6 +595,34 @@ describe("Session.create", () => {
         ),
       ).toEqual([0, 5, 6])
       expect(yield* SessionInbox.find(db, admitted.id)).toBeUndefined()
+    }),
+  )
+
+  it.effect("forks history into a separate worktree of the same project", () =>
+    Effect.gen(function* () {
+      const session = yield* Session.Service
+      const bus = yield* Bus.Service
+      const { db } = yield* Database.Service
+      const parent = yield* session.create({ location, title: "Parent" })
+      yield* session.prompt({ sessionID: parent.id, text: "Carry this context", resume: false })
+      yield* SessionInbox.promote(db, bus, parent.id, "steer")
+
+      const destination = Location.Ref.make({ directory: AbsolutePath.make("/project/worker") })
+      const forkID = Session.ID.create()
+      const forked = yield* session.fork({ id: forkID, sessionID: parent.id, location: destination })
+      yield* session.prompt({ sessionID: parent.id, text: "Later parent input", resume: false })
+      yield* SessionInbox.promote(db, bus, parent.id, "steer")
+      const retried = yield* session.fork({ id: forkID, sessionID: parent.id, location: destination })
+
+      expect(forked.location).toEqual(destination)
+      expect(forked.fork?.sessionID).toBe(parent.id)
+      expect(retried.id).toBe(forked.id)
+      expect((yield* session.context(forked.id)).filter((message) => message.type === "user")
+        .map((message) => message.text)).toEqual(["Carry this context"])
+      expect((yield* session.get(parent.id)).location).toEqual(location)
+      const changed = Location.Ref.make({ directory: AbsolutePath.make("/project/other") })
+      expect(yield* Effect.flip(session.fork({ id: forkID, sessionID: parent.id, location: changed })))
+        .toEqual(new Session.ForkConflictError({ sessionID: forkID }))
     }),
   )
 

@@ -124,6 +124,9 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
       .handle(
         "session.create",
         Effect.fn(function* (ctx) {
+          const placement = ctx.payload.parentID
+            ? { parentID: ctx.payload.parentID, location: ctx.payload.location }
+            : { location: ctx.payload.location ?? { directory: AbsolutePath.make(process.cwd()) } }
           return {
             data: yield* session
               .create({
@@ -133,9 +136,9 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
                 model: ctx.payload.model,
                 metadata: ctx.payload.metadata,
                 permissions: ctx.payload.permissions,
-                location: ctx.payload.location ?? { directory: AbsolutePath.make(process.cwd()) },
+                ...placement,
               })
-              .pipe(Effect.orDie),
+              .pipe(Effect.catchTag("Session.NotFoundError", missingSession)),
           }
         }),
       )
@@ -223,9 +226,17 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
         "session.fork",
         Effect.fn(function* (ctx) {
           return {
-            data: yield* session.fork({ sessionID: ctx.params.sessionID, before: ctx.payload.before }).pipe(
+            data: yield* session.fork({
+              id: ctx.payload.id,
+              sessionID: ctx.params.sessionID,
+              before: ctx.payload.before,
+              location: ctx.payload.location,
+            }).pipe(
               Effect.catchTag("Session.NotFoundError", missingSession),
               Effect.catchTag("Session.MessageNotFoundError", missingMessage),
+              Effect.catchTag("Session.ForkConflictError", (error) =>
+                new ConflictError({ resource: error.sessionID, message: `Fork session ID conflicts with an existing session: ${error.sessionID}` }),
+              ),
               Effect.catchTag(
                 "Session.ForkEmptyError",
                 (error) => new InvalidRequestError({ message: error.message, kind: "empty_session" }),

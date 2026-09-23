@@ -375,6 +375,7 @@ const EndpointSessionCreate = (raw: RawClient["server.session"]) => (input?: Ses
     raw["session.create"]({
       payload: {
         id: input?.["id"],
+        parentID: input?.["parentID"],
         title: input?.["title"],
         agent: input?.["agent"],
         model: input?.["model"],
@@ -429,7 +430,10 @@ const EndpointSessionRemove = (raw: RawClient["server.session"]) => (input: Sess
 
 const EndpointSessionFork = (raw: RawClient["server.session"]) => (input: SessionForkInput) =>
   preserveEffect<SessionForkOutput>()(
-    raw["session.fork"]({ params: { sessionID: input["sessionID"] }, payload: { before: input["before"] } }).pipe(
+    raw["session.fork"]({
+      params: { sessionID: input["sessionID"] },
+      payload: { id: input["id"], before: input["before"], location: input["location"] },
+    }).pipe(
       Effect.mapError(mapClientError),
       Effect.map((value) => value.data),
     ),

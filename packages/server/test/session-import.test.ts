@@ -28,6 +28,29 @@ const setup = Effect.gen(function* () {
     })
 })
 
+it.live("creates an empty child through the public API with a stable session ID", () =>
+  Effect.gen(function* () {
+    const request = yield* setup
+    const parent = Schema.decodeUnknownSync(SessionResponse)(yield* request("/api/session", { title: "Parent" }))
+    const id = Session.ID.create()
+    const child = Schema.decodeUnknownSync(SessionResponse)(yield* request("/api/session", {
+      id, parentID: parent.data.id, title: "Worker",
+    }))
+    const retried = Schema.decodeUnknownSync(SessionResponse)(yield* request("/api/session", {
+      id, parentID: parent.data.id, title: "Worker",
+    }))
+    const children = Schema.decodeUnknownSync(SessionsResponse)(
+      yield* request(`/api/session?parentID=${parent.data.id}`),
+    )
+
+    expect(child.data).toMatchObject({ id, parentID: parent.data.id, title: "Worker" })
+    expect(retried.data.id).toBe(id)
+    expect(children.data.map((item) => item.id)).toEqual([id])
+    expect(yield* request("/api/session", { parentID: Session.ID.create() }, 404))
+      .toMatchObject({ _tag: "SessionNotFoundError" })
+  }).pipe(Effect.scoped),
+)
+
 it.live("preserves imported parentID through HTTP import, read, and parent filter", () =>
   Effect.gen(function* () {
     const request = yield* setup
